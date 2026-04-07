@@ -1163,8 +1163,8 @@ class TestGemma4Processor(unittest.TestCase):
         from pathlib import Path
 
         from mlx_vlm.models.gemma4.processing_gemma4 import (
+            DEFAULT_CHAT_TEMPLATE,
             Gemma4Processor,
-            _load_default_chat_template,
         )
 
         def _fake_init(
@@ -1191,12 +1191,11 @@ class TestGemma4Processor(unittest.TestCase):
             ):
                 processor = Gemma4Processor.from_pretrained(tmpdir)
 
-        expected_template = _load_default_chat_template()
-        self.assertIsNotNone(expected_template)
-        self.assertEqual(tokenizer.chat_template, expected_template)
-        self.assertEqual(processor.chat_template, expected_template)
+        self.assertIsNotNone(DEFAULT_CHAT_TEMPLATE)
+        self.assertEqual(tokenizer.chat_template, DEFAULT_CHAT_TEMPLATE)
+        self.assertEqual(processor.chat_template, DEFAULT_CHAT_TEMPLATE)
 
-    def test_from_pretrained_preserves_existing_chat_template(self):
+    def test_from_pretrained_preserves_local_chat_template(self):
         import tempfile
         from pathlib import Path
 
@@ -1211,8 +1210,11 @@ class TestGemma4Processor(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             (Path(tmpdir) / "config.json").write_text('{"model_type": "gemma4"}')
+            (Path(tmpdir) / "chat_template.json").write_text(
+                '{"chat_template": "{{ local_template }}"}'
+            )
 
-            tokenizer = _mock_tokenizer(chat_template="{{ existing_template }}")
+            tokenizer = _mock_tokenizer(chat_template=None)
 
             with (
                 patch(
@@ -1226,8 +1228,8 @@ class TestGemma4Processor(unittest.TestCase):
             ):
                 processor = Gemma4Processor.from_pretrained(tmpdir)
 
-        self.assertEqual(tokenizer.chat_template, "{{ existing_template }}")
-        self.assertEqual(processor.chat_template, "{{ existing_template }}")
+        self.assertEqual(tokenizer.chat_template, "{{ local_template }}")
+        self.assertEqual(processor.chat_template, "{{ local_template }}")
 
 
 # ── AutoProcessor patch tests ─────────────────────────────────────────────────

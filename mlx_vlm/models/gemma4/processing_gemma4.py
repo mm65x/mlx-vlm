@@ -31,12 +31,11 @@ from ..base import load_chat_template, to_mlx
 
 _SUPPORTED_SOFT_TOKENS = (70, 140, 280, 560, 1120)
 _DEFAULT_CHAT_TEMPLATE_PATH = Path(__file__).with_name("chat_template.jinja")
-
-
-def _load_default_chat_template() -> Optional[str]:
-    if not _DEFAULT_CHAT_TEMPLATE_PATH.exists():
-        return None
-    return _DEFAULT_CHAT_TEMPLATE_PATH.read_text(encoding="utf-8")
+DEFAULT_CHAT_TEMPLATE = (
+    _DEFAULT_CHAT_TEMPLATE_PATH.read_text(encoding="utf-8")
+    if _DEFAULT_CHAT_TEMPLATE_PATH.exists()
+    else None
+)
 
 
 def _convert_to_rgb(image):
@@ -476,7 +475,7 @@ class Gemma4Processor(ProcessorMixin):
         )
         load_chat_template(tokenizer, pretrained_model_name_or_path)
         if getattr(tokenizer, "chat_template", None) is None:
-            tokenizer.chat_template = _load_default_chat_template()
+            tokenizer.chat_template = DEFAULT_CHAT_TEMPLATE
 
         # Load processor config (contains image_processor and feature_extractor settings)
         proc_config = {}
