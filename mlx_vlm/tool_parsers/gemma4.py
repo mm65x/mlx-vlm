@@ -140,7 +140,11 @@ def _parse_array(text):
 
 # Regex that captures the function name and uses a recursive pattern to
 # match the balanced outer braces (handles arbitrary nesting).
-_tool_call_regex = re.compile(r"call:(\w+)(\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\})")
+_FUNCTION_NAME_PATTERN = r"[A-Za-z0-9_-]{1,64}"
+_tool_call_regex = re.compile(
+    rf"call:({_FUNCTION_NAME_PATTERN})(\{{(?:[^{{}}]|\{{(?:[^{{}}]|\{{[^{{}}]*\}})*\}})*\}})"
+)
+_tool_call_start_regex = re.compile(rf"call:({_FUNCTION_NAME_PATTERN})\{{")
 
 
 def parse_tool_call(text, tools=None):
@@ -148,7 +152,7 @@ def parse_tool_call(text, tools=None):
     match = _tool_call_regex.search(text)
     if not match:
         # Fallback: find 'call:<name>{' and then balance braces manually
-        m = re.search(r"call:(\w+)\{", text)
+        m = _tool_call_start_regex.search(text)
         if not m:
             raise ValueError("No function call found in tool call text.")
         func_name = m.group(1)

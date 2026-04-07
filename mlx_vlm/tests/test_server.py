@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import mlx_vlm.server as server
+from mlx_vlm.tool_parsers import gemma4
 
 
 @pytest.fixture
@@ -130,3 +131,30 @@ def test_chat_completions_endpoint_forwards_explicit_sampling_args(client):
     assert mock_generate.call_args.kwargs["repetition_penalty"] == 1.15
     assert mock_generate.call_args.kwargs["logit_bias"] == {12: -1.5}
     assert mock_generate.call_args.kwargs["resize_shape"] == (512, 512)
+
+
+def test_process_tool_calls_accepts_hyphenated_gemma4_function_name():
+    model_output = (
+        "<|tool_call>" 'call:get-weather{city:<|"|>Tokyo<|"|>}' "<tool_call|>"
+    )
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get-weather",
+                "description": "Get the weather for a city.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"city": {"type": "string"}},
+                    "required": ["city"],
+                },
+            },
+        }
+    ]
+
+    result = server.process_tool_calls(model_output, gemma4, tools)
+
+    assert result["remaining_text"] == ""
+    assert len(result["calls"]) == 1
+    assert result["calls"][0]["function"]["name"] == "get-weather"
+    assert result["calls"][0]["function"]["arguments"] == '{"city": "Tokyo"}'
