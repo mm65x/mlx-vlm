@@ -7,6 +7,7 @@ https://github.com/huggingface/transformers/blob/main/src/transformers/models/ge
 
 import math
 import re
+from pathlib import Path
 from typing import List, Optional, Union
 
 import numpy as np
@@ -29,6 +30,13 @@ from transformers.tokenization_utils_base import PreTokenizedInput, TextInput
 from ..base import load_chat_template, to_mlx
 
 _SUPPORTED_SOFT_TOKENS = (70, 140, 280, 560, 1120)
+_DEFAULT_CHAT_TEMPLATE_PATH = Path(__file__).with_name("chat_template.jinja")
+
+
+def _load_default_chat_template() -> Optional[str]:
+    if not _DEFAULT_CHAT_TEMPLATE_PATH.exists():
+        return None
+    return _DEFAULT_CHAT_TEMPLATE_PATH.read_text(encoding="utf-8")
 
 
 def _convert_to_rgb(image):
@@ -467,6 +475,8 @@ class Gemma4Processor(ProcessorMixin):
             local_files_only=is_local,
         )
         load_chat_template(tokenizer, pretrained_model_name_or_path)
+        if getattr(tokenizer, "chat_template", None) is None:
+            tokenizer.chat_template = _load_default_chat_template()
 
         # Load processor config (contains image_processor and feature_extractor settings)
         proc_config = {}

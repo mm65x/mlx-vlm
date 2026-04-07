@@ -1157,6 +1157,79 @@ class TestLfm2VlProcessorPatch(unittest.TestCase):
         self.assertFalse(processor.image_processor.do_image_splitting)
 
 
+class TestGemma4Processor(unittest.TestCase):
+    def test_from_pretrained_uses_bundled_chat_template_when_missing(self):
+        import tempfile
+        from pathlib import Path
+
+        from mlx_vlm.models.gemma4.processing_gemma4 import (
+            Gemma4Processor,
+            _load_default_chat_template,
+        )
+
+        def _fake_init(
+            self, image_processor=None, tokenizer=None, chat_template=None, **kwargs
+        ):
+            self.image_processor = image_processor
+            self.tokenizer = tokenizer
+            self.chat_template = chat_template
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "config.json").write_text('{"model_type": "gemma4"}')
+
+            tokenizer = _mock_tokenizer(chat_template=None)
+
+            with (
+                patch(
+                    "transformers.AutoTokenizer.from_pretrained",
+                    return_value=tokenizer,
+                ),
+                patch(
+                    "mlx_vlm.models.gemma4.processing_gemma4.ProcessorMixin.__init__",
+                    _fake_init,
+                ),
+            ):
+                processor = Gemma4Processor.from_pretrained(tmpdir)
+
+        expected_template = _load_default_chat_template()
+        self.assertIsNotNone(expected_template)
+        self.assertEqual(tokenizer.chat_template, expected_template)
+        self.assertEqual(processor.chat_template, expected_template)
+
+    def test_from_pretrained_preserves_existing_chat_template(self):
+        import tempfile
+        from pathlib import Path
+
+        from mlx_vlm.models.gemma4.processing_gemma4 import Gemma4Processor
+
+        def _fake_init(
+            self, image_processor=None, tokenizer=None, chat_template=None, **kwargs
+        ):
+            self.image_processor = image_processor
+            self.tokenizer = tokenizer
+            self.chat_template = chat_template
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "config.json").write_text('{"model_type": "gemma4"}')
+
+            tokenizer = _mock_tokenizer(chat_template="{{ existing_template }}")
+
+            with (
+                patch(
+                    "transformers.AutoTokenizer.from_pretrained",
+                    return_value=tokenizer,
+                ),
+                patch(
+                    "mlx_vlm.models.gemma4.processing_gemma4.ProcessorMixin.__init__",
+                    _fake_init,
+                ),
+            ):
+                processor = Gemma4Processor.from_pretrained(tmpdir)
+
+        self.assertEqual(tokenizer.chat_template, "{{ existing_template }}")
+        self.assertEqual(processor.chat_template, "{{ existing_template }}")
+
+
 # ── AutoProcessor patch tests ─────────────────────────────────────────────────
 
 
